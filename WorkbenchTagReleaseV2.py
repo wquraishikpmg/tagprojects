@@ -53,6 +53,11 @@ def get_latest_commit_sha(repo_full_name):
         return commits[0]['sha']
     return None
 
+def tag_exists(repo_full_name, tag):
+    url = f'https://api.github.com/repos/{repo_full_name}/git/refs/tags/{tag}'
+    response = requests.get(url, headers=headers, auth=auth)
+    return response.status_code == 200
+
 def create_tag_object(repo_full_name, tag, sha, message):
     url = f'https://api.github.com/repos/{repo_full_name}/git/tags'
     data = {
@@ -67,7 +72,6 @@ def create_tag_object(repo_full_name, tag, sha, message):
     }
     try:
         response = requests.post(url, json=data, headers=headers, auth=auth)
-        print(response.json())  # Debug: show response content
         response.raise_for_status()
         return response.json()['sha']
     except requests.exceptions.HTTPError as http_err:
@@ -120,6 +124,12 @@ def tag_repositories(user, new_tag, commit_message, release_name, release_body):
     for repo in repos:
         repo_full_name = repo['full_name']
         print(f"Tagging repository: {repo_full_name}")
+        
+        # Check if the tag already exists
+        if tag_exists(repo_full_name, new_tag):
+            print(f"Tag {new_tag} already exists for repository {repo_full_name}. Skipping tagging.")
+            continue
+        
         sha = get_latest_commit_sha(repo_full_name)
         if sha:
             print(f"Tagging repository: {repo_full_name} sha value: {sha} rep fullname= {repo_full_name}")
